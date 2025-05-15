@@ -339,12 +339,12 @@ def generate_spec(
         install.append("mv $CODEBUILD_SRC_DIR/bundle/npm_mirror_support.py /var/scripts/npm_mirror_support.py")
         install.append(f"/var/scripts/npm_mirror_support.py {npm_mirror} && echo 'NPM Mirror Set'")
 
-    if "CodeArtifactDomain" in stack_outputs and "CodeArtifactRepository" in stack_outputs:
-        install.append(
-            "aws codeartifact login --tool pip "
-            f"--domain {stack_outputs['CodeArtifactDomain']} "
-            f"--repository {stack_outputs['CodeArtifactRepository']}"
-        )
+    # if "CodeArtifactDomain" in stack_outputs and "CodeArtifactRepository" in stack_outputs:
+    #     install.append(
+    #         "aws codeartifact login --tool pip "
+    #         f"--domain {stack_outputs['CodeArtifactDomain']} "
+    #         f"--repository {stack_outputs['CodeArtifactRepository']}"
+    #     )
 
     if cmds_install is not None:
         install += cmds_install

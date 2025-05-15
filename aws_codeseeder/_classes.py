@@ -150,6 +150,7 @@ class CodeSeederConfig:
     timeout: Optional[int] = 30
     python_modules: Optional[List[str]] = cast(List[str], dataclasses.field(default_factory=list))
     pythonpipx_modules: Optional[List[str]] = cast(List[str], dataclasses.field(default_factory=list))
+    pythonuv_tools: Optional[List[str]] = cast(List[str], dataclasses.field(default_factory=list))
     local_modules: Optional[Dict[str, str]] = cast(Dict[str, str], dataclasses.field(default_factory=dict))
     requirements_files: Optional[Dict[str, str]] = cast(Dict[str, str], dataclasses.field(default_factory=dict))
     codebuild_image: Optional[str] = None

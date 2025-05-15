@@ -92,6 +92,7 @@ def remote_function(
     codebuild_log_callback: Optional[Callable[[str], None]] = None,
     extra_python_modules: Optional[List[str]] = None,
     extra_pythonpipx_modules: Optional[List[str]] = None,
+    extra_pythonuv_tools: Optional[List[str]] = None,
     extra_local_modules: Optional[Dict[str, str]] = None,
     extra_requirements_files: Optional[Dict[str, str]] = None,
     codebuild_image: Optional[str] = None,
@@ -200,6 +201,7 @@ def remote_function(
 
         python_modules = decorator.python_modules  # type: ignore
         pythonpipx_modules = decorator.pythonpipx_modules  # type: ignore
+        pythonuv_tools = decorator.pythonuv_tools  # type: ignore
         local_modules = decorator.local_modules  # type: ignore
         requirements_files = decorator.requirements_files  # type: ignore
         codebuild_image = decorator.codebuild_image  # type: ignore
@@ -231,6 +233,7 @@ def remote_function(
         # update modules and requirements after configuration
         python_modules = config_object.python_modules + python_modules
         pythonpipx_modules = config_object.pythonpipx_modules + pythonpipx_modules
+        pythonuv_tools = config_object.pythonuv_tools + pythonuv_tools
         local_modules = {**cast(Mapping[str, str], config_object.local_modules), **local_modules}
         requirements_files = {**cast(Mapping[str, str], config_object.requirements_files), **requirements_files}
         codebuild_image = codebuild_image if codebuild_image is not None else config_object.codebuild_image
@@ -426,6 +429,7 @@ def remote_function(
 
     decorator.python_modules = [] if extra_python_modules is None else extra_python_modules  # type: ignore
     decorator.pythonpipx_modules = [] if extra_pythonpipx_modules is None else extra_pythonpipx_modules  # type: ignore
+    decorator.pythonuv_tools = [] if extra_pythonuv_tools is None else extra_pythonuv_tools  # type: ignore
     decorator.local_modules = {} if extra_local_modules is None else extra_local_modules  # type: ignore
     decorator.requirements_files = {} if extra_requirements_files is None else extra_requirements_files  # type: ignore
     decorator.codebuild_image = codebuild_image  # type: ignore
@@ -463,6 +467,7 @@ def local_function(
     codebuild_log_callback: Optional[Callable[[str], None]] = None,
     extra_python_modules: Optional[List[str]] = None,
     extra_pythonpipx_modules: Optional[List[str]] = None,
+    extra_pythonuv_tools: Optional[List[str]] = None,
     extra_local_modules: Optional[Dict[str, str]] = None,
     extra_requirements_files: Optional[Dict[str, str]] = None,
     codebuild_image: Optional[str] = None,
@@ -501,6 +506,7 @@ def local_function(
 
         python_modules = decorator.python_modules  # type: ignore
         pythonpipx_modules = decorator.pythonpipx_modules  # type: ignore
+        pythonuv_tools = decorator.pythonuv_tools  # type: ignore
         local_modules = decorator.local_modules  # type: ignore
         requirements_files = decorator.requirements_files  # type: ignore
         codebuild_image = decorator.codebuild_image  # type: ignore
@@ -532,6 +538,7 @@ def local_function(
         # update modules and requirements after configuration
         python_modules = config_object.python_modules + python_modules
         pythonpipx_modules = config_object.pythonpipx_modules + pythonpipx_modules
+        pythonuv_tools = config_object.pythonuv_tools + pythonuv_tools
         local_modules = {**cast(Mapping[str, str], config_object.local_modules), **local_modules}
         requirements_files = {**cast(Mapping[str, str], config_object.requirements_files), **requirements_files}
         codebuild_image = codebuild_image if codebuild_image is not None else config_object.codebuild_image
@@ -574,26 +581,6 @@ def local_function(
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # if not EXECUTING_REMOTELY:
-            #     # Execute the module
-            #     result = func(*args, **kwargs)
-            #     LOGGER.debug("result: %s", result)
-            #     if result is not None:
-            #         with open(RESULT_EXPORT_FILE, "w") as file:
-            #             LOGGER.debug("writing env export file: %s", RESULT_EXPORT_FILE)
-            #             file.write(
-            #                 textwrap.dedent(
-            #                     f"""\
-            #                     read -r -d '' AWS_CODESEEDER_OUTPUT <<'EOF'
-            #                     {json.dumps(result)}
-            #                     EOF
-            #                     """
-            #                 )
-            #             )
-            #             file.write("export AWS_CODESEEDER_OUTPUT")
-            #     return result
-            # else:
-
             # Bundle and execute remotely in codebuild
             LOGGER.info("Beginning Remote Execution: %s", fn_id)
             fn_args = {"fn_id": fn_id, "args": args, "kwargs": kwargs}
@@ -601,31 +588,41 @@ def local_function(
             stack_outputs = registry_entry.stack_outputs
 
             cmds_install = [
+                "pip install uv",
                 "export PATH=$PATH:/root/.local/bin",
-                "python3 -m venv ~/.venv",
+                "uv venv  ~/.venv --python 3.11",
                 ". ~/.venv/bin/activate",
-                "cd ${CODEBUILD_SRC_DIR}/bundle",
+                #"cd ${CODEBUILD_SRC_DIR}/bundle",
             ]
+            ## Gotta do a pipx lookup here...this sucks
+            #cmds_install.append(f"uv tool install aws-codeseeder~={__version__}")
+            
             if pythonpipx_modules:
-                cmds_install.append("pip install pipx~=1.7.1")
-                cmds_install.append(f"pipx install aws-codeseeder~={__version__}")
+                cmds_install.append("uv pip install pipx~=1.7.1")
+                cmds_install.append(f"uv pipx install aws-codeseeder~={__version__}")
+                cmds_install.append(f"uv pipx inject aws-codeseeder {' '.join(pythonpipx_modules)} --include-apps")
+            elif pythonuv_tools:
+                for tool in pythonuv_tools:
+                    cmds_install.append(f"uv tool install --with {tool} aws-codeseeder")
+                    cmds_install.append(f"uv tool install {tool}")
+                
             else:
                 cmds_install.append(f"pip install aws-codeseeder~={__version__}")
-
-            # If this local env variable is set, don't attempt install of codeseeder from package repository
-            # This is used so that codeseeder can be installed from a local python module included in the bundle
-            # and is used for codeseeder development when codeartifact isn't used.
-            if os.getenv("AWS_CODESEEDER_DEVELOPMENT") and not pythonpipx_modules:
-                cmds_install.pop()
+            
+            
+            
+            # # If this local env variable is set, don't attempt install of codeseeder from package repository
+            # # This is used so that codeseeder can be installed from a local python module included in the bundle
+            # # and is used for codeseeder development when codeartifact isn't used.
+            # if os.getenv("AWS_CODESEEDER_DEVELOPMENT") and not pythonpipx_modules:
+            #     cmds_install.pop()
 
             if requirements_files:
-                cmds_install += [f"pip install -r requirements-{f}" for f in requirements_files.keys()]
+                cmds_install += [f"uv pip install -r requirements-{f}" for f in requirements_files.keys()]
             if local_modules:
-                cmds_install += [f"pip install {m}/" for m in local_modules.keys()]
+                cmds_install += [f"uv pip install {m}/" for m in local_modules.keys()]
             if python_modules:
-                cmds_install.append(f"pip install {' '.join(python_modules)}")
-            if pythonpipx_modules:
-                cmds_install.append(f"pipx inject aws-codeseeder {' '.join(pythonpipx_modules)} --include-apps")
+                cmds_install.append(f"uv pip install {' '.join(python_modules)}")
 
             dirs_tuples = [(v, k) for k, v in local_modules.items()] + [(v, k) for k, v in dirs.items()]
             files_tuples = [(v, f"requirements-{k}") for k, v in requirements_files.items()] + [
@@ -640,12 +637,12 @@ def local_function(
                 cmds_install=cmds_install + install_commands,
                 cmds_pre=[
                     ". ~/.venv/bin/activate",
-                    "cd ${CODEBUILD_SRC_DIR}/bundle",
+                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + pre_build_commands,
                 cmds_build=[
                     ". ~/.venv/bin/activate",
-                    "cd ${CODEBUILD_SRC_DIR}/bundle",
+                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + pre_execution_commands
                 + [
@@ -658,7 +655,7 @@ def local_function(
                 + build_commands,
                 cmds_post=[
                     ". ~/.venv/bin/activate",
-                    "cd ${CODEBUILD_SRC_DIR}/bundle",
+                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + post_build_commands,
                 exported_env_vars=exported_env_vars,
@@ -686,11 +683,11 @@ def local_function(
                     }
                     for k, v in env_vars.items()
                 ]
-            
+            import yaml
             def write_it(filename, content):
                 with open(filename, "w") as buildspec:
-                    buildspec.write(json.dumps(content, indent=4))
-            write_it("buildspec.json",buildspec)
+                    buildspec.write(yaml.dump(content, indent=4))
+            write_it("buildspec.yaml",buildspec)
             # build_info = _remote.run(
             #     stack_outputs=stack_outputs,
             #     bundle_path=bundle_zip,
@@ -720,6 +717,7 @@ def local_function(
 
     decorator.python_modules = [] if extra_python_modules is None else extra_python_modules  # type: ignore
     decorator.pythonpipx_modules = [] if extra_pythonpipx_modules is None else extra_pythonpipx_modules  # type: ignore
+    decorator.pythonuv_tools = [] if extra_pythonuv_tools is None else extra_pythonuv_tools  # type: ignore
     decorator.local_modules = {} if extra_local_modules is None else extra_local_modules  # type: ignore
     decorator.requirements_files = {} if extra_requirements_files is None else extra_requirements_files  # type: ignore
     decorator.codebuild_image = codebuild_image  # type: ignore
