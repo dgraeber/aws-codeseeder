@@ -269,3 +269,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     main()
+    args_file = '/Users/dgraeber/aws-seed-group/idf-modules/codeseeder.out/permissions-pre-dummy-dummy/bundle/fn_args.json'
+    execute(args_file=args_file,debug=True)
+    
+#/Users/dgraeber/aws-seed-group/idf-modules/codeseeder.out/permissions-pre-dummy-dummy/bundle/fn_args.json
