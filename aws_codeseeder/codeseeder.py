@@ -315,10 +315,14 @@ def remote_function(
                 stack_outputs = registry_entry.stack_outputs
 
                 cmds_install = [
+                    "if curl -s --head https://astral.sh | grep '200' > /dev/null; then\n"
+                    "  curl -Ls https://astral.sh/uv/install.sh | sh\n"
+                    "else\n"
+                    "  pip install uv\n"
+                    "fi",
                     "export PATH=$PATH:/root/.local/bin",
-                    "python3 -m venv ~/.venv",
-                    ". ~/.venv/bin/activate",
-                    "cd ${CODEBUILD_SRC_DIR}/bundle",
+                    "uv venv  ~/.venv --python 3.11",
+                    ". ~/.venv/bin/activate"
                 ]
                 if pythonpipx_modules:
                     cmds_install.append("pip install pipx~=1.7.1")
@@ -588,11 +592,14 @@ def local_function(
             stack_outputs = registry_entry.stack_outputs
 
             cmds_install = [
-                "pip install uv",
+                "if curl -s --head https://astral.sh | grep '200' > /dev/null; then\n"
+                "  curl -Ls https://astral.sh/uv/install.sh | sh\n"
+                "else\n"
+                "  pip install uv\n"
+                "fi",
                 "export PATH=$PATH:/root/.local/bin",
                 "uv venv  ~/.venv --python 3.11",
-                ". ~/.venv/bin/activate",
-                #"cd ${CODEBUILD_SRC_DIR}/bundle",
+                ". ~/.venv/bin/activate"
             ]
             ## Gotta do a pipx lookup here...this sucks
             #cmds_install.append(f"uv tool install aws-codeseeder~={__version__}")
@@ -603,9 +610,10 @@ def local_function(
                 cmds_install.append(f"uv pipx inject aws-codeseeder {' '.join(pythonpipx_modules)} --include-apps")
             elif pythonuv_tools:
                 for tool in pythonuv_tools:
+                    # cmds_install.append(f"uv tool install --with {tool} aws-codeseeder~={__version__}")
+                    # cmds_install.append(f"uv tool install --with aws-codeseeder~={__version__} {tool}")
                     cmds_install.append(f"uv tool install --with {tool} aws-codeseeder")
-                    cmds_install.append(f"uv tool install {tool}")
-                
+                    cmds_install.append(f"uv tool install --with aws-codeseeder {tool}")
             else:
                 cmds_install.append(f"pip install aws-codeseeder~={__version__}")
             
