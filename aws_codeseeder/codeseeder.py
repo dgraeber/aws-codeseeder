@@ -20,7 +20,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Union, cast
 
 from boto3 import Session
 
-from aws_codeseeder import LOGGER, __version__, _bundle, _classes, _remote
+from aws_codeseeder import LOGGER, __version__, _bundle, _classes, _remote, _local
 from aws_codeseeder._classes import (
     CodeSeederConfig,
     ConfigureDecorator,
@@ -460,6 +460,7 @@ def remote_function(
 
 def local_function(
     seedkit_name: str,
+    local_deploy_path: str,
     *,
     function_module: Optional[str] = None,
     function_name: Optional[str] = None,
@@ -567,17 +568,15 @@ def local_function(
         prebuilt_bundle = prebuilt_bundle if prebuilt_bundle is not None else config_object.prebuilt_bundle
 
         LOGGER.debug("MODULE_IMPORTER: %s", MODULE_IMPORTER)
-        LOGGER.debug("EXECUTING_REMOTELY: %s", EXECUTING_REMOTELY)
 
-        if not EXECUTING_REMOTELY:
-            if any([not os.path.isdir(p) for p in cast(Dict[str, str], local_modules).values()]):
-                raise ValueError(f"One or more local modules could not be resolved: {local_modules}")
-            if any([not os.path.isfile(p) for p in cast(Dict[str, str], requirements_files).values()]):
-                raise ValueError(f"One or more requirements files could not be resolved: {requirements_files}")
-            if any([not os.path.isdir(p) for p in cast(Dict[str, str], dirs).values()]):
-                raise ValueError(f"One or more dirs could not be resolved: {dirs}")
-            if any([not os.path.isfile(p) for p in cast(Dict[str, str], files).values()]):
-                raise ValueError(f"One or more files could not be resolved: {files}")
+        if any([not os.path.isdir(p) for p in cast(Dict[str, str], local_modules).values()]):
+            raise ValueError(f"One or more local modules could not be resolved: {local_modules}")
+        if any([not os.path.isfile(p) for p in cast(Dict[str, str], requirements_files).values()]):
+            raise ValueError(f"One or more requirements files could not be resolved: {requirements_files}")
+        if any([not os.path.isdir(p) for p in cast(Dict[str, str], dirs).values()]):
+            raise ValueError(f"One or more dirs could not be resolved: {dirs}")
+        if any([not os.path.isfile(p) for p in cast(Dict[str, str], files).values()]):
+            raise ValueError(f"One or more files could not be resolved: {files}")
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -587,16 +586,20 @@ def local_function(
             LOGGER.debug("fn_args: %s", fn_args)
             stack_outputs = registry_entry.stack_outputs
 
+
             cmds_install = [
-                "pip install uv",
-                "export PATH=$PATH:/root/.local/bin",
-                "uv venv  ~/.venv --python 3.11",
-                ". ~/.venv/bin/activate",
-                #"cd ${CODEBUILD_SRC_DIR}/bundle",
+                """if curl -s --head https://astral.sh | grep "200" > /dev/null; then
+                curl -Ls https://astral.sh/uv/install.sh | bash
+                else
+                pip install uv
+                fi""",
             ]
-            ## Gotta do a pipx lookup here...this sucks
-            #cmds_install.append(f"uv tool install aws-codeseeder~={__version__}")
-            
+            cmds_install.append("export PATH=$PATH:/root/.local/bin")
+            cmds_install.append("uv venv  ~/.venv --python 3.11")
+            cmds_install.append(". ~/.venv/bin/activate")
+            cmds_install.append("cd ${CODEBUILD_SRC_DIR}/bundle"),
+
+
             if pythonpipx_modules:
                 cmds_install.append("uv pip install pipx~=1.7.1")
                 cmds_install.append(f"uv pipx install aws-codeseeder~={__version__}")
@@ -632,17 +635,18 @@ def local_function(
             bundle_zip = _bundle.generate_bundle(
                 fn_args=fn_args, dirs=dirs_tuples, files=files_tuples, bundle_id=bundle_id
             )
+            
             buildspec = codebuild.generate_spec(
                 stack_outputs=stack_outputs,
                 cmds_install=cmds_install + install_commands,
                 cmds_pre=[
                     ". ~/.venv/bin/activate",
-                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
+                    "cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + pre_build_commands,
                 cmds_build=[
                     ". ~/.venv/bin/activate",
-                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
+                    "cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + pre_execution_commands
                 + [
@@ -655,7 +659,7 @@ def local_function(
                 + build_commands,
                 cmds_post=[
                     ". ~/.venv/bin/activate",
-                    #"cd ${CODEBUILD_SRC_DIR}/bundle",
+                    "cd ${CODEBUILD_SRC_DIR}/bundle",
                 ]
                 + post_build_commands,
                 exported_env_vars=exported_env_vars,
@@ -683,22 +687,21 @@ def local_function(
                     }
                     for k, v in env_vars.items()
                 ]
-            import yaml
-            def write_it(filename, content):
-                with open(filename, "w") as buildspec:
-                    buildspec.write(yaml.dump(content, indent=4))
-            write_it("buildspec.yaml",buildspec)
-            # build_info = _remote.run(
-            #     stack_outputs=stack_outputs,
-            #     bundle_path=bundle_zip,
-            #     buildspec=buildspec,
-            #     timeout=timeout if timeout else config_object.timeout if config_object.timeout else 30,
-            #     codebuild_log_callback=codebuild_log_callback,
-            #     overrides=overrides if overrides != {} else None,
-            #     session=boto3_session,
-            #     bundle_id=bundle_id,
-            #     prebuilt_bundle=prebuilt_bundle,
-            # )
+            
+            # Probably need to move this and the bundle info to a different dir
+            # import yaml
+            # def write_it(filename, content):
+            #     with open(filename, "w") as buildspec:
+            #         buildspec.write(yaml.dump(content, indent=4))
+            # write_it("buildspec.yaml",buildspec)
+            
+            
+            build_info = _local.run(
+                local_deploy_path=local_deploy_path,
+                bundle_zip = bundle_zip,
+                buildspec=buildspec,
+                env_vars=env_vars
+            )
             # if build_info:
             #     LOGGER.debug("exported_env_vars: %s", build_info.exported_env_vars)
             #     codeseeder_output = build_info.exported_env_vars.pop("AWS_CODESEEDER_OUTPUT", None)

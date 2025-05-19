@@ -159,3 +159,20 @@ def generate_bundle(
 
     zip_file = _make_zipfile(base_name=bundle_dir, root_dir=remote_dir, base_dir="bundle", logger=LOGGER)
     return zip_file
+
+
+def extract_zip(zip_path, extract_to):
+    """
+    Extracts a zip file to the specified directory.
+
+    :param zip_path: Path to the .zip file
+    :param extract_to: Directory to extract contents to
+    """
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError(f"Zip file not found: {zip_path}")
+
+    os.makedirs(extract_to, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+        print(f"Extracted {zip_path} to {extract_to}")
