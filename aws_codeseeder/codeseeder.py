@@ -472,8 +472,6 @@ def local_function(
     *,
     function_module: Optional[str] = None,
     function_name: Optional[str] = None,
-    timeout: Optional[int] = None,
-    codebuild_log_callback: Optional[Callable[[str], None]] = None,
     extra_python_modules: Optional[List[str]] = None,
     extra_pythonpipx_modules: Optional[List[str]] = None,
     extra_pythonuv_tools: Optional[List[str]] = None,
@@ -498,7 +496,8 @@ def local_function(
     abort_phases_on_failure: Optional[bool] = None,
     runtime_versions: Optional[Dict[str, str]] = None,
     bundle_id: Optional[str] = None,
-    boto3_session: Optional[Union[Callable[[], Session], Session]] = None,
+    # docker_network: Optional[str] = None,
+    # local_pypi_endpoint: Optional[str] = None,
 ) -> RemoteFunctionDecorator:
 
 
@@ -536,6 +535,8 @@ def local_function(
         abort_on_failure = decorator.abort_on_failure  # type: ignore
         runtimes = decorator.runtimes  # type: ignore
         prebuilt_bundle = decorator.prebuilt_bundle  # type: ignore
+        # docker_network: decorator.docker_network
+        # local_pypi_endpoint: decorator.local_pypi_endpoint
 
         if not registry_entry.configured:
             if registry_entry.config_function:
@@ -574,6 +575,8 @@ def local_function(
         abort_on_failure = abort_on_failure if abort_on_failure is not None else config_object.abort_phases_on_failure
         runtimes = runtimes if runtimes is not None else config_object.runtime_versions
         prebuilt_bundle = prebuilt_bundle if prebuilt_bundle is not None else config_object.prebuilt_bundle
+        # docker_network = docker_network if docker_network is not None else config_object.docker_network
+        # local_pypi_endpoint = local_pypi_endpoint if local_pypi_endpoint is not None else config_object.local_pypi_endpoint
 
         LOGGER.debug("MODULE_IMPORTER: %s", MODULE_IMPORTER)
 
@@ -611,14 +614,19 @@ def local_function(
             
             if pythonpipx_modules:
                 cmds_install.append("uv pip install pipx~=1.7.1")
-                cmds_install.append(f"uv pipx install aws-codeseeder~={__version__}")
+                cmds_install.append(f"uv pipx install  aws-codeseeder~={__version__}")
                 cmds_install.append(f"uv pipx inject aws-codeseeder {' '.join(pythonpipx_modules)} --include-apps")
             elif pythonuv_tools:
                 for tool in pythonuv_tools:
-                    # cmds_install.append(f"uv tool install --with {tool} aws-codeseeder~={__version__}")
-                    # cmds_install.append(f"uv tool install {tool}")
-                    cmds_install.append(f"uv tool install --with {tool} aws-codeseeder")
-                    cmds_install.append(f"uv tool install {tool}")
+                    docker_network="pypi-net"
+                    local_pypi_endpoint="http://pypiserver:8080/simple"
+                    if docker_network and local_pypi_endpoint:
+                        cmds_install.append(f"docker network connect {docker_network} agent-resources-build-1")
+                        cmds_install.append(f"uv tool install --extra-index-url {local_pypi_endpoint} --with {tool} aws-codeseeder~={__version__}")
+                        cmds_install.append(f"uv tool install --extra-index-url {local_pypi_endpoint} {tool}")
+                    else:
+                        cmds_install.append(f"uv tool install --with {tool} aws-codeseeder~={__version__}")
+                        cmds_install.append(f"uv tool install {tool}")
             else:
                 cmds_install.append(f"pip install aws-codeseeder~={__version__}")
             
@@ -755,5 +763,7 @@ def local_function(
     decorator.abort_on_failure = abort_phases_on_failure  # type: ignore
     decorator.runtimes = runtime_versions  # type: ignore
     decorator.prebuilt_bundle = prebuilt_bundle  # type: ignore
+    # decorator.docker_network = docker_network
+    # decorator.local_pypi_endpoint = local_pypi_endpoint
 
     return decorator

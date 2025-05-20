@@ -80,6 +80,9 @@ def run(
             "-e", "INITIATOR=dgraeber" ,
             "public.ecr.aws/codebuild/local-builds:latest"]
 
+
+    print(" ".join(docker_command))
+
     try:
         subprocess.run(docker_command, check=True)
     except KeyboardInterrupt:
