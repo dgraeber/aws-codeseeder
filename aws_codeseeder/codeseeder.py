@@ -496,8 +496,8 @@ def local_function(
     abort_phases_on_failure: Optional[bool] = None,
     runtime_versions: Optional[Dict[str, str]] = None,
     bundle_id: Optional[str] = None,
-    # docker_network: Optional[str] = None,
-    # local_pypi_endpoint: Optional[str] = None,
+    docker_network: Optional[str] = None,
+    local_pypi_endpoint: Optional[str] = None,
 ) -> RemoteFunctionDecorator:
 
 
@@ -535,8 +535,8 @@ def local_function(
         abort_on_failure = decorator.abort_on_failure  # type: ignore
         runtimes = decorator.runtimes  # type: ignore
         prebuilt_bundle = decorator.prebuilt_bundle  # type: ignore
-        # docker_network: decorator.docker_network
-        # local_pypi_endpoint: decorator.local_pypi_endpoint
+        docker_network = decorator.docker_network
+        local_pypi_endpoint = decorator.local_pypi_endpoint
 
         if not registry_entry.configured:
             if registry_entry.config_function:
@@ -575,8 +575,8 @@ def local_function(
         abort_on_failure = abort_on_failure if abort_on_failure is not None else config_object.abort_phases_on_failure
         runtimes = runtimes if runtimes is not None else config_object.runtime_versions
         prebuilt_bundle = prebuilt_bundle if prebuilt_bundle is not None else config_object.prebuilt_bundle
-        # docker_network = docker_network if docker_network is not None else config_object.docker_network
-        # local_pypi_endpoint = local_pypi_endpoint if local_pypi_endpoint is not None else config_object.local_pypi_endpoint
+        docker_network = docker_network if docker_network is not None else config_object.docker_network
+        local_pypi_endpoint = local_pypi_endpoint if local_pypi_endpoint is not None else config_object.local_pypi_endpoint
 
         LOGGER.debug("MODULE_IMPORTER: %s", MODULE_IMPORTER)
 
@@ -618,8 +618,8 @@ def local_function(
                 cmds_install.append(f"uv pipx inject aws-codeseeder {' '.join(pythonpipx_modules)} --include-apps")
             elif pythonuv_tools:
                 for tool in pythonuv_tools:
-                    docker_network="pypi-net"
-                    local_pypi_endpoint="http://pypiserver:8080/simple"
+                    # docker_network="pypi-net"
+                    # local_pypi_endpoint="http://pypiserver:8080/simple"
                     if docker_network and local_pypi_endpoint:
                         cmds_install.append(f"docker network connect {docker_network} agent-resources-build-1")
                         cmds_install.append(f"uv tool install --extra-index-url {local_pypi_endpoint} --with {tool} aws-codeseeder~={__version__}")
@@ -706,14 +706,6 @@ def local_function(
                     for k, v in env_vars.items()
                 ]
             
-            # Probably need to move this and the bundle info to a different dir
-            # import yaml
-            # def write_it(filename, content):
-            #     with open(filename, "w") as buildspec:
-            #         buildspec.write(yaml.dump(content, indent=4))
-            # write_it("buildspec.yaml",buildspec)
-            
-            
             build_info = _local.run(
                 local_deploy_path=local_deploy_path,
                 bundle_zip = bundle_zip,
@@ -763,7 +755,7 @@ def local_function(
     decorator.abort_on_failure = abort_phases_on_failure  # type: ignore
     decorator.runtimes = runtime_versions  # type: ignore
     decorator.prebuilt_bundle = prebuilt_bundle  # type: ignore
-    # decorator.docker_network = docker_network
-    # decorator.local_pypi_endpoint = local_pypi_endpoint
+    decorator.docker_network = docker_network
+    decorator.local_pypi_endpoint = local_pypi_endpoint
 
     return decorator

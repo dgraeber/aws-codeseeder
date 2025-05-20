@@ -173,8 +173,8 @@ class CodeSeederConfig:
     abort_phases_on_failure: bool = True
     runtime_versions: Optional[Dict[str, str]] = cast(Dict[str, str], dataclasses.field(default_factory=dict))
     prebuilt_bundle: Optional[str] = None
-    # docker_network: Optional[str] = None
-    # local_pypi_endpoint: Optional[str] = None
+    docker_network: Optional[str] = None
+    local_pypi_endpoint: Optional[str] = None
 
 
 ConfigureFn = Callable[[NamedArg(CodeSeederConfig, "configuration")], None]  # noqa: F821

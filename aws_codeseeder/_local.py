@@ -20,7 +20,7 @@ from aws_codeseeder import _bundle
 
 import subprocess
 from aws_codeseeder import LOGGER
-from aws_codeseeder.services import codebuild
+#from aws_codeseeder.services import codebuild
 
 
 
@@ -30,7 +30,7 @@ def run(
     buildspec: Dict[str, Any],
     env_vars: Dict[str, str]
     
-) -> Optional[codebuild.BuildInfo]:
+) -> None: #Optional[codebuild.BuildInfo]:
 
     current_path = local_deploy_path
     
