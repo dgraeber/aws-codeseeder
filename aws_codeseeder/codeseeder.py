@@ -625,8 +625,9 @@ def local_function(
                         cmds_install.append(f"uv tool install --extra-index-url {local_pypi_endpoint} --with {tool} aws-codeseeder~={__version__}")
                         cmds_install.append(f"uv tool install --extra-index-url {local_pypi_endpoint} {tool}")
                     else:
-                        cmds_install.append(f"uv tool install --with {tool} aws-codeseeder~={__version__}")
-                        cmds_install.append(f"uv tool install {tool}")
+                        # cmds_install.append(f"uv tool install --with {tool} aws-codeseeder~={__version__}")
+                        # cmds_install.append(f"uv tool install {tool}")
+                        cmds_install.append(f"uv pip install aws-codeseeder~={__version__}  {tool} ")
             else:
                 cmds_install.append(f"pip install aws-codeseeder~={__version__}")
             
