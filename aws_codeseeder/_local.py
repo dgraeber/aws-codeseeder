@@ -64,29 +64,63 @@ def run(
     # public.ecr.aws/codebuild/local-builds:latest"""
     
     #print(docker_command)
-
     docker_command = [
         "docker","run","-it",
             "-v","/var/run/docker.sock:/var/run/docker.sock",
             "-e", "IMAGE_NAME=public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0",
-            "-e", f"ARTIFACTS={current_path}/artifacts" ,
-            "-e", f"SOURCE={current_path}/" ,
-            "-e", f"BUILDSPEC={current_path}/buildspec.yaml" ,
-            "-v", f"{current_path}/:/LocalBuild/envFile/" ,
+            "-e", f"ARTIFACTS=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/artifacts" ,
+            "-e", f"SOURCE=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/" ,
+            "-e", f"BUILDSPEC=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/buildspec.yaml" ,
+            "-v", f"/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/:/LocalBuild/envFile/" ,
             "-e", "ENV_VAR_FILE=diw.env" ,
             "-e", "AWS_CONFIGURATION=/home/dgraeber/.aws" ,
             "-e", "AWS_EC2_METADATA_DISABLED=true" ,
             "-e", "MOUNT_SOURCE_DIRECTORY=TRUE" ,
             "-e", "INITIATOR=dgraeber" ,
-            "public.ecr.aws/codebuild/local-builds:latest"]
+            "-e", f"REPORTS=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/logs"
+            ]
+    
+    
+    
+    for key, value in os.environ.items():
+        if key.startswith("AWS_"):
+            env_current=["-e",f"{key}={value}"]
+            docker_command.extend(env_current)
+
+    docker_command.append("public.ecr.aws/codebuild/local-builds:latest")
 
 
+            #"-v", f"{current_path}/logs:/tmp/codebuild/logs",
+    print(" ")
+    print(" ")
     print(" ".join(docker_command))
+    print(" ")
+    print(" ")
 
     try:
         subprocess.run(docker_command, check=True)
     except KeyboardInterrupt:
         print("\nInterrupted by user.")
+        
+        
+    # buildImage = "public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0"
+    
+    # docker_script_command = [
+    #     "./codebuild_build.sh","-i",f"{buildImage}",
+    #         "-a","artifacts",
+    #         "-s",f"/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/{local_deploy_path}",
+    #         "-r","logs",
+    #         "-c",
+    #         "-b",f"./buildspec.yaml",
+    #         "-m",
+    #         "-e",f"./diw.env"
+    # ]
+    
+    # print(" ")
+    # print(" ")
+    # print(" ".join(docker_script_command))
+    # print(" ")
+    # print(" ")
    
 
     return None
