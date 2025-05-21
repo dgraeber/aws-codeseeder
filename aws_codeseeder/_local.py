@@ -31,31 +31,29 @@ def run(
     env_vars: Dict[str, str]
     
 ) -> None: #Optional[codebuild.BuildInfo]:
-
-    current_path = local_deploy_path
     
     #write the buildspec to file
     def write_it(filename, content):
         with open(filename, "w") as buildspec:
             buildspec.write(yaml.dump(content, indent=4))
-    write_it(os.path.join(current_path, "buildspec.yaml"),buildspec)
+    write_it(os.path.join(local_deploy_path, "buildspec.yaml"),buildspec)
 
     # Write the environment variables to the file
-    env_vars_path = os.path.join(current_path, 'diw.env')   
+    env_vars_path = os.path.join(local_deploy_path, 'diw.env')   
     with open(env_vars_path, 'w') as f:
         for key, value in env_vars.items():
             f.write(f'{key}={value}\n')
             
     ## Extract the zip to the local root so it is mounted by the container
-    _bundle.extract_zip(bundle_zip, current_path)
+    _bundle.extract_zip(bundle_zip, local_deploy_path)
 
 
     # docker_command = f"""docker run -it -v /var/run/docker.sock:/var/run/docker.sock \
     # -e "IMAGE_NAME=public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0" \
-    # -e "ARTIFACTS={current_path}/artifacts" \
-    # -e "SOURCE={current_path}/" \
-    # -e "BUILDSPEC={current_path}/buildspec.yaml" \
-    # -v "{current_path}/:/LocalBuild/envFile/" \
+    # -e "ARTIFACTS={local_deploy_path}/artifacts" \
+    # -e "SOURCE={local_deploy_path}/" \
+    # -e "BUILDSPEC={local_deploy_path}/buildspec.yaml" \
+    # -v "{local_deploy_path}/:/LocalBuild/envFile/" \
     # -e "ENV_VAR_FILE=diw.env" \
     # -e "AWS_CONFIGURATION=/home/dgraeber/.aws" \
     # -e "AWS_EC2_METADATA_DISABLED=true" \
@@ -68,16 +66,16 @@ def run(
         "docker","run","-it",
             "-v","/var/run/docker.sock:/var/run/docker.sock",
             "-e", "IMAGE_NAME=public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0",
-            "-e", f"ARTIFACTS=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/artifacts" ,
-            "-e", f"SOURCE=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/" ,
-            "-e", f"BUILDSPEC=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/buildspec.yaml" ,
-            "-v", f"/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/:/LocalBuild/envFile/" ,
+            "-e", f"ARTIFACTS={local_deploy_path}/artifacts" ,
+            "-e", f"SOURCE={local_deploy_path}/" ,
+            "-e", f"BUILDSPEC={local_deploy_path}/buildspec.yaml" ,
+            "-v", f"{local_deploy_path}/:/LocalBuild/envFile/" ,
             "-e", "ENV_VAR_FILE=diw.env" ,
-            "-e", "AWS_CONFIGURATION=/home/dgraeber/.aws" ,
+            "-e", "AWS_CONFIGURATION=~/.aws" ,
             "-e", "AWS_EC2_METADATA_DISABLED=true" ,
             "-e", "MOUNT_SOURCE_DIRECTORY=TRUE" ,
             "-e", "INITIATOR=dgraeber" ,
-            "-e", f"REPORTS=/home/dgraeber/workplace/seed-group/testing-frameworks/zzz-codeseeder-testing/capability/{current_path}/logs"
+            "-e", f"REPORTS={local_deploy_path}/logs"
             ]
     
     
@@ -90,7 +88,7 @@ def run(
     docker_command.append("public.ecr.aws/codebuild/local-builds:latest")
 
 
-            #"-v", f"{current_path}/logs:/tmp/codebuild/logs",
+            #"-v", f"{local_deploy_path}/logs:/tmp/codebuild/logs",
     print(" ")
     print(" ")
     print(" ".join(docker_command))
