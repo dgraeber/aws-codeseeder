@@ -71,7 +71,7 @@ def run(
             "-e", f"BUILDSPEC={local_deploy_path}/buildspec.yaml" ,
             "-v", f"{local_deploy_path}/:/LocalBuild/envFile/" ,
             "-e", "ENV_VAR_FILE=diw.env" ,
-            "-e", "AWS_CONFIGURATION=~/.aws" ,
+            "-e", f"AWS_CONFIGURATION={os.environ.get('HOME')}/.aws",
             "-e", "AWS_EC2_METADATA_DISABLED=true" ,
             "-e", "MOUNT_SOURCE_DIRECTORY=TRUE" ,
             "-e", "INITIATOR=dgraeber" ,
