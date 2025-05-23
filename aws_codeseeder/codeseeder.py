@@ -711,7 +711,8 @@ def local_function(
                 local_deploy_path=local_deploy_path,
                 bundle_zip = bundle_zip,
                 buildspec=buildspec,
-                env_vars=env_vars
+                env_vars=env_vars,
+                codebuild_image = codebuild_image
             )
             # if build_info:
             #     LOGGER.debug("exported_env_vars: %s", build_info.exported_env_vars)

@@ -28,7 +28,8 @@ def run(
     local_deploy_path:str,
     bundle_zip: str,
     buildspec: Dict[str, Any],
-    env_vars: Dict[str, str]
+    env_vars: Dict[str, str],
+    codebuild_image: Optional[str]
     
 ) -> None: #Optional[codebuild.BuildInfo]:
     
@@ -47,6 +48,7 @@ def run(
     ## Extract the zip to the local root so it is mounted by the container
     _bundle.extract_zip(bundle_zip, local_deploy_path)
 
+    codebuild_image = codebuild_image if codebuild_image else "public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:5.0"
 
     # docker_command = f"""docker run -it -v /var/run/docker.sock:/var/run/docker.sock \
     # -e "IMAGE_NAME=public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0" \
@@ -65,7 +67,7 @@ def run(
     docker_command = [
         "docker","run","-it",
             "-v","/var/run/docker.sock:/var/run/docker.sock",
-            "-e", "IMAGE_NAME=public.ecr.aws/codebuild/amazonlinux2-x86_64-standard:4.0",
+            "-e", f"IMAGE_NAME={codebuild_image}",
             "-e", f"ARTIFACTS={local_deploy_path}/artifacts" ,
             "-e", f"SOURCE={local_deploy_path}/" ,
             "-e", f"BUILDSPEC={local_deploy_path}/buildspec.yaml" ,
